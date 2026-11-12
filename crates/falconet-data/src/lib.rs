@@ -4,7 +4,8 @@
 //! - [`bbox`]: the bounding-box type (re-exported from `falconet-core`),
 //! - [`antiuav410`]: parsers and an index for the Anti-UAV410 benchmark,
 //! - [`stats`]: dataset statistics (box sizes, absence, motion, attributes),
-//! - [`metrics`]: the official Anti-UAV410 tracking metric (state accuracy).
+//! - [`metrics`]: Anti-UAV410's tracking metric (state accuracy) and COCO
+//!   detection metrics (mAP, AP per size, false positives per frame).
 //!
 //! Datasets are never stored in the repository. They live under
 //! `$FALCONET_DATA_DIR` (default `~/datasets`); see `scripts/` for downloads.
