@@ -1,0 +1,39 @@
+# --- Rust build output ---
+/target/
+
+# --- Data and model artifacts (never committed; see scripts/ for downloads) ---
+/data/
+/datasets/
+/runs/
+/artifacts/
+*.onnx
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.mpk
+*.mpk.gz
+*.npz
+*.h5
+
+# --- Python (reference/) ---
+.venv/
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# --- Local-only planning and agent files ---
+/PLAN.MD
+/CLAUDE.md
+/.claude/
+mise.local.toml
+
+# --- Editors / OS ---
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# --- Misc ---
+.env
+*.log
