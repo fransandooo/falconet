@@ -37,6 +37,33 @@ struct State {
     pending: Vec<Metric>,
     finished: bool,
     warned: bool,
+    tagged_images: bool,
+}
+
+/// `images/<key>+step+<step>+timestamp+<ms>+<id>`, the artifact naming scheme
+/// MLflow 3's UI parses for step-indexed images (`/` in keys becomes `~`).
+fn image_artifact_stem(key: &str, step: i64, timestamp: i64, id: &str) -> String {
+    let key: String = key
+        .chars()
+        .map(|c| match c {
+            '/' => '~',
+            c if c.is_ascii_alphanumeric() || "_-. ".contains(c) => c,
+            _ => '_',
+        })
+        .collect();
+    format!("images/{key}+step+{step}+timestamp+{timestamp}+{id}")
+}
+
+/// A unique-enough id for artifact names, without pulling in a UUID crate:
+/// nanosecond clock + a per-process counter.
+fn unique_suffix() -> String {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    format!("{nanos:x}{:04x}", COUNTER.fetch_add(1, Ordering::Relaxed))
 }
 
 impl Run {
@@ -137,6 +164,37 @@ impl Run {
             .upload_artifact(&self.inner.info, &name, &contents)
     }
 
+    /// Logs an image for a given step, so the MLflow UI shows it in the run's
+    /// image viewer with a step slider (e.g. one prediction grid per epoch).
+    ///
+    /// MLflow has no REST endpoint for this. Its Python client simply uploads
+    /// the PNG plus a small WebP thumbnail with a naming convention the UI
+    /// recognises, and sets the `mlflow.loggedImages` tag. We do the same.
+    /// `png` and `webp_thumbnail` are already-encoded image files.
+    pub fn log_image(
+        &self,
+        key: &str,
+        step: i64,
+        png: &[u8],
+        webp_thumbnail: &[u8],
+    ) -> Result<(), MlflowError> {
+        let stem = image_artifact_stem(key, step, now_millis(), &unique_suffix());
+        let client = &self.inner.client;
+        client.upload_artifact(&self.inner.info, &format!("{stem}.png"), png)?;
+        client.upload_artifact(
+            &self.inner.info,
+            &format!("{stem}+compressed.webp"),
+            webp_thumbnail,
+        )?;
+        let mut state = self.lock();
+        if !state.tagged_images {
+            state.tagged_images = true;
+            drop(state); // release the lock before the network call
+            client.set_tag(self.id(), "mlflow.loggedImages", "True")?;
+        }
+        Ok(())
+    }
+
     /// Flushes pending metrics and closes the run with `status`.
     pub fn finish(&self, status: RunStatus) -> Result<(), MlflowError> {
         self.flush();
@@ -194,4 +252,26 @@ pub fn git_tags() -> Vec<(String, String)> {
         tags.push(("git.dirty".to_owned(), (!status.is_empty()).to_string()));
     }
     tags
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn image_artifact_names_follow_the_mlflow_convention() {
+        let stem = image_artifact_stem("valid/predictions", 3, 1700, "abc");
+        assert_eq!(stem, "images/valid~predictions+step+3+timestamp+1700+abc");
+    }
+
+    #[test]
+    fn unsafe_characters_in_image_keys_are_replaced() {
+        let stem = image_artifact_stem("a:b", 0, 0, "x");
+        assert_eq!(stem, "images/a_b+step+0+timestamp+0+x");
+    }
+
+    #[test]
+    fn unique_suffixes_differ() {
+        assert_ne!(unique_suffix(), unique_suffix());
+    }
 }
