@@ -5457,6 +5457,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "playground-toy-detector"
+version = "0.0.0"
+dependencies = [
+ "burn",
+ "clap",
+ "falconet-mlflow",
+ "image",
+ "playground-annotations",
+]
+
+[[package]]
 name = "playground-trackers"
 version = "0.0.0"
 dependencies = [
