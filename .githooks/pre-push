@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Runs the same checks as CI before every `git push`, using the local
+# (already warm) build cache, so it usually takes seconds.
+#
+# Enable once per clone:   git config core.hooksPath .githooks
+# Skip in an emergency:    git push --no-verify
+set -euo pipefail
+
+cd "$(git rev-parse --show-toplevel)"
+
+echo "pre-push: cargo fmt"
+cargo fmt --all --check
+
+echo "pre-push: cargo clippy"
+cargo clippy --workspace --all-targets --locked --quiet -- -D warnings
+
+echo "pre-push: tests"
+if cargo nextest --version >/dev/null 2>&1; then
+    cargo nextest run --workspace --exclude playground-gpu-check --locked --status-level fail
+else
+    cargo test --workspace --exclude playground-gpu-check --locked --quiet
+fi
+cargo test --workspace --exclude playground-gpu-check --doc --locked --quiet
+
+echo "pre-push: all checks passed"

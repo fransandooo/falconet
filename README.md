@@ -60,6 +60,9 @@ cargo build
 # optional: cargo-nextest and bacon, scoped to this repo
 mise install
 
+# run fmt + clippy + tests before every push (same checks as CI)
+git config core.hooksPath .githooks
+
 # check that Burn sees your GPU (ndarray CPU vs wgpu vs cuda)
 cargo run --release -p playground-gpu-check
 ```

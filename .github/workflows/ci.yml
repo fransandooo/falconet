@@ -1,9 +1,13 @@
 name: CI
 
+# Day-to-day checks run locally in the pre-push hook (.githooks/pre-push).
+# CI is the clean-environment safety net: pull requests and merges to main.
 on:
-  push:
-    branches: [main, "phase-*"]
   pull_request:
+    paths-ignore: ["**.md", "docs/**", "media/**"]
+  push:
+    branches: [main]
+    paths-ignore: ["**.md", "docs/**", "media/**"]
   workflow_dispatch:
 
 concurrency:
