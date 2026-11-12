@@ -5,7 +5,7 @@
 [![CI](https://github.com/fransandooo/falconet/actions/workflows/ci.yml/badge.svg)](https://github.com/fransandooo/falconet/actions/workflows/ci.yml)
 ![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue)
 
-> 🚧 **Work in progress.** Phase 0 (Rust + Burn fundamentals) is underway. Nothing here is usable yet.
+> 🚧 **Work in progress.** Phase 1 (data + end-to-end pipeline) is underway. Nothing here is usable yet.
 
 A *falconet* is a small falcon: a small model hunting small targets.
 
@@ -23,8 +23,8 @@ falconet is an end-to-end drone detection and tracking system for thermal (IR) v
 
 | Phase | Topic | Status |
 |---|---|---|
-| 0 | Rust + Burn fundamentals, dev environment | 🟡 in progress |
-| 1 | End-to-end Rust pipeline with an imported model | ⚪ planned |
+| 0 | Rust + Burn fundamentals, dev environment | ✅ done |
+| 1 | End-to-end Rust pipeline with an imported model | 🟡 in progress |
 | 2 | Training in Rust + training visualizer | ⚪ planned |
 | 3 | INT8 quantization and pipeline optimization | ⚪ planned |
 | 4 | Custom GPU kernels with CubeCL | ⚪ planned |
@@ -88,7 +88,15 @@ Inside the repo, mise sets `MLFLOW_TRACKING_URI`, so training binaries log to th
 
 ## Datasets
 
-No data is stored in this repository; download scripts will live in `scripts/`. Datasets and their licences will be listed and cited here from phase 1.
+No data is stored in this repository. Datasets live under `$FALCONET_DATA_DIR` (default `~/datasets`) and are fetched with the scripts in `scripts/`.
+
+| Dataset | Use | Notes |
+|---|---|---|
+| [Anti-UAV410](docs/datasets/antiuav410.md) | main: train / val / test | thermal IR, 410 videos, 438k frames; `scripts/download_antiuav410.sh` |
+
+Anti-UAV410 has no stated licence; it is used here for research only and is not redistributed. Please cite:
+
+> B. Huang, J. Li, J. Chen, G. Wang, J. Zhao, T. Xu. *Anti-UAV410: A Thermal Infrared Benchmark and Customized Scheme for Tracking Drones in the Wild.* IEEE T-PAMI, 2023.
 
 ## License
 

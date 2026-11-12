@@ -41,7 +41,7 @@ Media: `media/phase-0/toy-detector-learning.gif`. The MNIST dashboard screenshot
 - 👎 **Performance gotchas.** CUDA matmuls run in TF32 by default (CP 0.1). GPU training is not bit-reproducible despite fixed seeds. The TUI dashboard needs a real TTY.
 
 **Problems and limitations found:**
-1. **GPU memory leak when creating a DataLoader per epoch** (CUDA, 4 workers): about +200 MB per epoch, OOM at epoch ~18 on the 4 GB card. Fixed by building loaders once. Not yet reported upstream.
+1. **GPU memory leak when creating a DataLoader per epoch** (CUDA, 4 workers): about +200 MB per epoch, OOM at epoch ~18 on the 4 GB card. Fixed by building loaders once. *Update: Fran approved reporting it; filed as [tracel-ai/burn#6505](https://github.com/tracel-ai/burn/issues/6505) with a minimal reproduction.*
 2. **Non-determinism on GPU.** Identical MNIST runs gave 98.89% and 99.24%. From now on, model comparisons need several runs (mean ± std).
 3. **4 GB of VRAM** was enough here, but it is the main constraint for the real detector at full resolution.
 4. **MLflow's image slider is not verified in the browser.** It relies on MLflow 3's undocumented artifact naming convention, copied from the official Python client. Artifacts and tags are verified via the API, but nobody has looked at the UI yet.
