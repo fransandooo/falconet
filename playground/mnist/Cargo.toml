@@ -1,0 +1,25 @@
+[package]
+name = "playground-mnist"
+description = "Exercise 3c: Burn tensors, an MLP and a CNN trained on MNIST with the training dashboard"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+default-run = "playground-mnist"
+
+[dependencies]
+burn = { workspace = true, features = [
+    "train",   # Learner, metrics, checkpoints
+    "tui",     # terminal training dashboard
+    "metrics", # CPU/GPU usage panels in the dashboard
+    "vision",  # MnistDataset
+    "fusion",  # kernel fusion on the GPU backends
+    "flex",    # pure-Rust CPU backend
+    "rayon",   # multi-threaded flex
+    "simd",    # SIMD kernels in flex
+    "wgpu",
+    "cuda",
+] }
+clap = { workspace = true }
+falconet-mlflow = { workspace = true }
