@@ -1,0 +1,6 @@
+# Project-scoped developer tools, installed by `mise install`.
+# They live under ~/.local/share/mise and are only on PATH inside this repo.
+# The Rust toolchain itself is managed by rustup via rust-toolchain.toml.
+[tools]
+"cargo:cargo-nextest" = "0.9.151" # faster test runner: `cargo nextest run`
+"cargo:bacon" = "3.26.0"          # background checker: `bacon clippy`, `bacon test`
