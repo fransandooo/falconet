@@ -1,0 +1,13 @@
+[package]
+name = "playground-trackers"
+description = "Exercise 3b: traits and generics with a Tracker trait and two implementations"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+# A path dependency on another workspace crate: we reuse `BBox` from exercise 3a.
+# The real project works the same way (falconet-track will use falconet-data types).
+playground-annotations = { path = "../annotations" }

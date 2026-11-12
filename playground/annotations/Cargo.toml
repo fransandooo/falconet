@@ -1,0 +1,10 @@
+[package]
+name = "playground-annotations"
+description = "Exercise 3a: ownership and borrowing with a toy annotation parser"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]

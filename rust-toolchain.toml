@@ -1,0 +1,6 @@
+# Pins the Rust toolchain for everyone working on this repo (and for CI).
+# rustup reads this file automatically and installs the toolchain on first use.
+[toolchain]
+channel = "1.99.1"
+components = ["rustfmt", "clippy", "rust-analyzer", "rust-src"]
+profile = "minimal"
