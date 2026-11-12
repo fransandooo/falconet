@@ -1,7 +1,7 @@
 //! # falconet-data
 //!
 //! Everything about the datasets, independent of any ML framework:
-//! - [`bbox`]: the bounding-box type used across falconet,
+//! - [`bbox`]: the bounding-box type (re-exported from `falconet-core`),
 //! - [`antiuav410`]: parsers and an index for the Anti-UAV410 benchmark,
 //! - [`stats`]: dataset statistics (box sizes, absence, motion, attributes),
 //! - [`metrics`]: the official Anti-UAV410 tracking metric (state accuracy).
@@ -10,7 +10,8 @@
 //! `$FALCONET_DATA_DIR` (default `~/datasets`); see `scripts/` for downloads.
 
 pub mod antiuav410;
-pub mod bbox;
+/// Re-exported so `falconet_data::bbox::BBox` keeps working.
+pub use falconet_core::bbox;
 pub mod metrics;
 pub mod stats;
 

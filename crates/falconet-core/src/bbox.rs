@@ -1,4 +1,7 @@
 //! Axis-aligned bounding boxes in pixel coordinates.
+//!
+//! Also provides the conversions trackers need: `tlbr` corners and the
+//! `(cx, cy, aspect, height)` form used by the ByteTrack Kalman filter.
 
 use serde::{Deserialize, Serialize};
 
@@ -38,6 +41,20 @@ impl BBox {
         self.w.hypot(self.h)
     }
 
+    /// `[cx, cy, w / h, h]`: centre, aspect ratio and height. The state
+    /// representation of the SORT/ByteTrack Kalman filter, because aspect
+    /// ratio changes much more slowly than width and height do.
+    pub fn to_xyah(&self) -> [f32; 4] {
+        let (cx, cy) = self.center();
+        [cx, cy, self.w / self.h, self.h]
+    }
+
+    /// Inverse of [`BBox::to_xyah`].
+    pub fn from_xyah([cx, cy, a, h]: [f32; 4]) -> Self {
+        let w = a * h;
+        Self::new(cx - w / 2.0, cy - h / 2.0, w, h)
+    }
+
     /// Intersection over union, matching the official evaluation code
     /// (no overlap → 0; boxes are treated as continuous rectangles).
     pub fn iou(&self, other: &BBox) -> f32 {
@@ -63,6 +80,13 @@ mod tests {
         assert_eq!(a.iou(&BBox::new(5.0, 5.0, 1.0, 1.0)), 0.0);
         // Touching edges: zero-area overlap counts as no overlap.
         assert_eq!(a.iou(&BBox::new(2.0, 0.0, 2.0, 2.0)), 0.0);
+    }
+
+    #[test]
+    fn xyah_round_trip() {
+        let b = BBox::new(10.0, 20.0, 8.0, 4.0);
+        assert_eq!(b.to_xyah(), [14.0, 22.0, 2.0, 4.0]);
+        assert_eq!(BBox::from_xyah(b.to_xyah()), b);
     }
 
     #[test]
