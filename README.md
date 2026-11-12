@@ -36,7 +36,7 @@ Progress reports for each milestone live in [`docs/checkpoints/`](docs/checkpoin
 
 ```
 falconet/
-├── crates/        # the product: falconet-* crates (from phase 1)
+├── crates/        # the product: falconet-* crates
 ├── playground/    # phase 0 learning exercises, not part of the product
 ├── reference/     # PyTorch / ONNX Runtime baselines, for comparison only
 ├── scripts/       # dataset download and conversion
@@ -63,18 +63,28 @@ mise install
 # run fmt + clippy + tests before every push (same checks as CI)
 git config core.hooksPath .githooks
 
-# check that Burn sees your GPU (ndarray CPU vs wgpu vs cuda)
+# check that Burn sees your GPU (flex CPU vs wgpu vs cuda)
 cargo run --release -p playground-gpu-check
 ```
 
 Everyday commands:
 
 ```bash
-cargo fmt --all                                  # format
-cargo clippy --workspace --all-targets -- -D warnings   # lint
-cargo nextest run --workspace                    # test
-bacon clippy                                     # re-run clippy on every save
+cargo fmt --all                                        # format
+cargo clippy --workspace --all-targets -- -D warnings  # lint
+cargo nextest run --workspace                          # test
+bacon clippy                                           # re-run clippy on every save
 ```
+
+### Experiment tracking
+
+Training runs are tracked in a local [MLflow](https://mlflow.org) server: hyperparameters, live metric curves, timings, the git commit and artifacts. Rust talks to it over its REST API ([`crates/falconet-mlflow`](crates/falconet-mlflow/)).
+
+```bash
+mise run mlflow        # starts http://127.0.0.1:5000 (data in runs/mlflow/, gitignored)
+```
+
+Inside the repo, mise sets `MLFLOW_TRACKING_URI`, so training binaries log to the server automatically when it is running and train without it when it isn't.
 
 ## Datasets
 

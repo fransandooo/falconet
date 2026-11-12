@@ -4,3 +4,17 @@
 [tools]
 "cargo:cargo-nextest" = "0.9.151" # faster test runner: `cargo nextest run`
 "cargo:bacon" = "3.26.0"          # background checker: `bacon clippy`, `bacon test`
+
+# Environment variables set while inside this repo.
+[env]
+# Training binaries log to this MLflow server when it is running (`mise run mlflow`).
+MLFLOW_TRACKING_URI = "http://127.0.0.1:5000"
+
+[tasks.mlflow]
+description = "Start the local MLflow tracking server on http://127.0.0.1:5000"
+# uvx runs MLflow in a cached, isolated environment: nothing is installed
+# globally. Runs are stored under runs/mlflow/ (gitignored).
+run = [
+    "mkdir -p runs/mlflow/artifacts",
+    "uvx --python 3.12 --from 'mlflow==3.18.0' mlflow server --host 127.0.0.1 --port 5000 --backend-store-uri sqlite:///runs/mlflow/mlflow.db --artifacts-destination runs/mlflow/artifacts",
+]

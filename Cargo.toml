@@ -1,8 +1,7 @@
 [workspace]
 resolver = "3"
-# `crates/*` (the falconet-* product crates) is added in phase 1: Cargo
-# rejects a member glob that matches no directory.
 members = [
+    "crates/*",     # the product: falconet-* crates
     "playground/*", # phase 0 learning exercises, not part of the product
 ]
 
@@ -16,9 +15,20 @@ authors = ["Francisco Sandoval"]
 
 [workspace.dependencies]
 burn = { version = "0.22.1", default-features = true }
+clap = { version = "4.6.7", features = ["derive", "env"] }
+log = "0.4.35"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+thiserror = "2.0.21"
+ureq = { version = "3.5.2", default-features = false, features = ["json"] }
+
+falconet-mlflow = { path = "crates/falconet-mlflow" }
 
 # Burn is painfully slow without optimizations, so dependencies are always
 # compiled with opt-level 3 even in debug builds. Our own code stays at the
 # debug default so it keeps fast incremental builds and good debug info.
+# Dependencies skip debug info: it is most of `target/`'s size, and we don't
+# step into Burn's internals with a debugger.
 [profile.dev.package."*"]
 opt-level = 3
+debug = false
