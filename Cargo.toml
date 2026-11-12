@@ -1,0 +1,24 @@
+[workspace]
+resolver = "3"
+# `crates/*` (the falconet-* product crates) is added in phase 1: Cargo
+# rejects a member glob that matches no directory.
+members = [
+    "playground/*", # phase 0 learning exercises, not part of the product
+]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.99"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/fransandooo/falconet"
+authors = ["Francisco Sandoval"]
+
+[workspace.dependencies]
+burn = { version = "0.22.1", default-features = true }
+
+# Burn is painfully slow without optimizations, so dependencies are always
+# compiled with opt-level 3 even in debug builds. Our own code stays at the
+# debug default so it keeps fast incremental builds and good debug info.
+[profile.dev.package."*"]
+opt-level = 3

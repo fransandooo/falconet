@@ -1,0 +1,11 @@
+[package]
+name = "playground-gpu-check"
+description = "Phase 0 sanity check: does Burn see the GPU on every backend?"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+burn = { workspace = true, features = ["flex", "rayon", "simd", "wgpu", "cuda"] }
