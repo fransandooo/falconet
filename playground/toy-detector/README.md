@@ -53,7 +53,7 @@ Lessons that carry over to the real project:
 
 ## Gotcha found here: one DataLoader per epoch leaks GPU memory
 
-The first version built a new `DataLoader` every epoch, to change the scenes. On CUDA, GPU memory then grew by ~200 MB per epoch (318 → 636 → 830 → 1,048 → 1,192 MiB in five epochs), and the 4 GB card ran out around epoch 18. The likely cause is that each loader's worker threads leave per-thread device memory behind. With one loader iterated for the whole run, memory stays flat at ~806 MiB. Rule for the project: **build data loaders once.**
+The first version built a new `DataLoader` every epoch, to change the scenes. On CUDA, GPU memory then grew by ~200 MB per epoch (318 → 636 → 830 → 1,048 → 1,192 MiB in five epochs), and the 4 GB card ran out around epoch 18. The likely cause is that each loader's worker threads leave per-thread device memory behind. With one loader iterated for the whole run, memory stays flat at ~806 MiB. Rule for the project: **build data loaders once.** Reported upstream as [tracel-ai/burn#6505](https://github.com/tracel-ai/burn/issues/6505); setting `[streaming] max_streams = 1` in `cubecl.toml` also avoids it.
 
 ## Try this
 

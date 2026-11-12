@@ -2991,6 +2991,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "falconet-data"
+version = "0.0.0"
+dependencies = [
+ "clap",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "falconet-mlflow"
 version = "0.0.0"
 dependencies = [
