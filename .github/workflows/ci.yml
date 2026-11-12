@@ -39,10 +39,12 @@ jobs:
         with:
           tool: cargo-nextest
 
+      # gpu-check has no tests and needs a GPU to run; compiling Burn's CUDA and
+      # wgpu backends again just for the test profile would double the CI time.
+      # Clippy above still checks it.
       - name: Test
-        run: cargo nextest run --workspace --locked --no-tests=warn
+        run: cargo nextest run --workspace --exclude playground-gpu-check --locked
 
-      # nextest does not run doctests. Enable this once the first library crate
-      # exists (phase 1); with only binaries `cargo test --doc` errors out.
-      # - name: Doc tests
-      #   run: cargo test --workspace --doc --locked
+      # nextest does not run doctests.
+      - name: Doc tests
+        run: cargo test --workspace --exclude playground-gpu-check --doc --locked
