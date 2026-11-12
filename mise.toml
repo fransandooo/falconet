@@ -9,6 +9,8 @@
 [env]
 # Training binaries log to this MLflow server when it is running (`mise run mlflow`).
 MLFLOW_TRACKING_URI = "http://127.0.0.1:5000"
+# Datasets live outside the repo (tens of GB); scripts/ and falconet-data read this.
+FALCONET_DATA_DIR = "{{env.HOME}}/datasets"
 
 [tasks.mlflow]
 description = "Start the local MLflow tracking server on http://127.0.0.1:5000"
