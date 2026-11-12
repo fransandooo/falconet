@@ -5011,10 +5011,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
 
 [[package]]
+name = "playground-annotations"
+version = "0.0.0"
+
+[[package]]
 name = "playground-gpu-check"
 version = "0.0.0"
 dependencies = [
  "burn",
+]
+
+[[package]]
+name = "playground-trackers"
+version = "0.0.0"
+dependencies = [
+ "playground-annotations",
 ]
 
 [[package]]
