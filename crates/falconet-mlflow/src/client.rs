@@ -197,6 +197,13 @@ impl MlflowClient {
             .map(|_| ())
     }
 
+    /// Sets (or overwrites) a tag on a run.
+    pub fn set_tag(&self, run_id: &str, key: &str, value: &str) -> Result<(), MlflowError> {
+        let body = serde_json::json!({ "run_id": run_id, "key": key, "value": value });
+        self.post::<serde_json::Value>("runs/set-tag", &body)
+            .map(|_| ())
+    }
+
     /// Marks a run as finished, failed or killed.
     pub fn update_run(&self, run_id: &str, status: RunStatus) -> Result<(), MlflowError> {
         let body = serde_json::json!({
