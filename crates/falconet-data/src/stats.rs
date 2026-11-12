@@ -67,6 +67,8 @@ pub struct SplitStats {
     pub present_frames: usize,
     pub absent_frames: usize,
     pub unlabelled_frames: usize,
+    /// Frames marked present with a degenerate (zero-area) box; not in box stats.
+    pub invalid_frames: usize,
     pub sequence_length: Summary,
     /// Fraction of frames without a visible drone, per sequence.
     pub absent_fraction_per_sequence: Summary,
@@ -104,7 +106,7 @@ pub fn split_stats(sequences: &[SequenceAnnotation], split: Option<Split>) -> Sp
     let (mut motion_px, mut motion_rel, mut consecutive_iou) = (Vec::new(), Vec::new(), Vec::new());
     let (mut lengths, mut absent_fractions, mut absence_runs) =
         (Vec::new(), Vec::new(), Vec::new());
-    let (mut present, mut absent, mut unlabelled) = (0, 0, 0);
+    let (mut present, mut absent, mut unlabelled, mut invalid) = (0, 0, 0, 0);
     let mut size_bins = [0_usize; 4];
     let mut coco_small = 0;
 
@@ -153,6 +155,10 @@ pub fn split_stats(sequences: &[SequenceAnnotation], split: Option<Split>) -> Sp
                     unlabelled += 1;
                     previous = None;
                 }
+                FrameLabel::Invalid(_) => {
+                    invalid += 1;
+                    previous = None;
+                }
             }
         }
         if run > 0 {
@@ -174,10 +180,11 @@ pub fn split_stats(sequences: &[SequenceAnnotation], split: Option<Split>) -> Sp
     SplitStats {
         split,
         sequences: selected.len(),
-        frames: present + absent + unlabelled,
+        frames: present + absent + unlabelled + invalid,
         present_frames: present,
         absent_frames: absent,
         unlabelled_frames: unlabelled,
+        invalid_frames: invalid,
         sequence_length: Summary::of(&mut lengths),
         absent_fraction_per_sequence: Summary::of(&mut absent_fractions),
         absence_run_length: Summary::of(&mut absence_runs),

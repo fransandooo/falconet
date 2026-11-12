@@ -33,6 +33,16 @@ From the toolkit's `Evaluation_for_SA.py`, per sequence:
 
 So a tracker is rewarded both for accurate boxes *and* for saying "nothing here" when the drone is gone. The toolkit also reports precision and success (AUC) plots.
 
+**Our implementation:** `falconet_data::metrics::state_accuracy`, exposed as
+`cargo run --release -p falconet-data --bin antiuav410 -- sa --predictions <dir> --split test`
+for results in the official `{"res": [[x, y, w, h], [], ...]}` format. `scripts/check_sa_parity.py` verifies it against the official `eval()`, embedded verbatim and hash-checked against the toolkit source, so no downloaded code is executed. It uses synthetic tracker outputs for every sequence (jitter, misses, false alarms, "no target" answers). Result: max per-sequence difference 7×10⁻⁷ (f32 vs f64 rounding) on train, val and test.
+
+Subtleties the port has to reproduce:
+- frames marked visible with a **degenerate box** (zero width or height, e.g. `18,0,1,0`) are *scored*, always 0; there are 5 such frames (3 train, 2 test);
+- visible frames with no box at all (`[]`, or a box summing to 0) are *skipped*;
+- predictions are `zip`ped with the labels, so extra frames on either side are ignored;
+- in the toolkit `.txt` files "not visible" and "visible with an all-zero box" look the same (`0,0,0,0`), so the `exist` flags in `IR_label.json` are the reference for evaluation.
+
 ## Statistics
 
 Computed from the toolkit annotations with
@@ -68,6 +78,7 @@ Sequence length: 1,000 frames typical (median), 28–1,500 overall. Absences com
 5. **"Not visible" frames are rare (2.3%) but scored.** SA gives full credit for an empty prediction when the drone is gone, so the pipeline needs a calibrated "no target" decision (a score threshold plus the tracker's lost state), not just the best box every frame.
 6. **About 8.5% of consecutive pairs have identical boxes.** These are probably static drones or copied/interpolated annotations. Literature reports roughly 5% erroneous labels in the raw data. Worth inspecting visually once the frames are available.
 7. **Thermal crossover is everywhere** (≈ 60–67% of videos): the drone's temperature matches the background's, so intensity alone won't separate them.
+8. **5 degenerate boxes** (zero width or height) among the visible frames. They're harmless for training once filtered out, but the metric must keep them; see above.
 
 ## Pending (needs the frames)
 

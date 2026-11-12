@@ -125,9 +125,14 @@ pub enum FrameLabel {
     Present(BBox),
     /// The drone is occluded or out of view.
     Absent,
-    /// Marked as present but without a usable box. The official evaluation
-    /// skips such frames; we keep them visible instead of silently dropping them.
+    /// Marked as present but without a box at all (`[]`, or all zeros in the
+    /// JSON format). The official evaluation skips such frames; we keep them
+    /// visible instead of silently dropping them.
     Unlabelled,
+    /// Marked as present with a degenerate box (zero width or height, e.g.
+    /// `18,0,1,0`): 5 of the 438k frames. The official evaluation still scores
+    /// these frames, and always with 0; statistics leave them out.
+    Invalid(BBox),
 }
 
 impl FrameLabel {
@@ -203,12 +208,15 @@ pub fn parse_box_lines(text: &str, path: &Path) -> Result<Vec<FrameLabel>, Annot
         .collect()
 }
 
-/// `0,0,0,0` (or any degenerate box) means "not visible" in the text format.
+/// `0,0,0,0` means "not visible" in the text format; any other box with a
+/// zero width or height is a degenerate annotation.
 fn box_label(x: f32, y: f32, w: f32, h: f32) -> FrameLabel {
-    if w > 0.0 && h > 0.0 {
+    if [x, y, w, h] == [0.0; 4] {
+        FrameLabel::Absent
+    } else if w > 0.0 && h > 0.0 {
         FrameLabel::Present(BBox::new(x, y, w, h))
     } else {
-        FrameLabel::Absent
+        FrameLabel::Invalid(BBox::new(x, y, w, h))
     }
 }
 
@@ -269,10 +277,41 @@ pub fn parse_ir_label_json(text: &str, path: &Path) -> Result<Vec<FrameLabel>, A
         .zip(&json.gt_rect)
         // A tuple can't hold an unsized `[f32]`, so match on the slice
         // reference `&[f32]`: `&[x, y, w, h]` only matches exactly 4 elements.
+        // The checks mirror the official evaluation: `len(gt) < 4 or sum(gt) == 0`
+        // is skipped; any other 4-number box is scored.
         .map(|(&exist, rect)| match (exist, rect.as_slice()) {
             (0, _) => FrameLabel::Absent,
-            (_, &[x, y, w, h]) if w > 0.0 && h > 0.0 => FrameLabel::Present(BBox::new(x, y, w, h)),
+            (_, &[x, y, w, h]) if x + y + w + h != 0.0 => box_label(x, y, w, h),
             _ => FrameLabel::Unlabelled,
+        })
+        .collect())
+}
+
+/// Tracker results in the official toolkit's JSON format:
+/// `{"res": [[x, y, w, h], [], ...]}`, one entry per frame.
+///
+/// Mirrors how `Evaluation_for_SA.py` interprets an entry: 4 numbers = a box,
+/// 0 or 1 numbers = "no target". Any other length is malformed: the official
+/// code scores it 0 on every frame, which a zero-size box reproduces.
+pub fn parse_predictions_json(
+    text: &str,
+    path: &Path,
+) -> Result<Vec<Option<BBox>>, AnnotationError> {
+    #[derive(Deserialize)]
+    struct Results {
+        res: Vec<Vec<f32>>,
+    }
+    let results: Results = serde_json::from_str(text).map_err(|source| AnnotationError::Json {
+        path: path.to_owned(),
+        source,
+    })?;
+    Ok(results
+        .res
+        .iter()
+        .map(|entry| match entry.as_slice() {
+            &[x, y, w, h] => Some(BBox::new(x, y, w, h)),
+            [] | [_] => None,
+            _ => Some(BBox::new(0.0, 0.0, 0.0, 0.0)),
         })
         .collect())
 }
@@ -331,13 +370,15 @@ mod tests {
 
     #[test]
     fn box_lines_with_absent_frames() {
-        let labels = parse_box_lines("206,314,8,8\n0,0,0,0\n\n207.5,312,8,9\n", p()).unwrap();
+        let labels =
+            parse_box_lines("206,314,8,8\n0,0,0,0\n\n207.5,312,8,9\n18,0,1,0\n", p()).unwrap();
         assert_eq!(
             labels,
             vec![
                 FrameLabel::Present(BBox::new(206.0, 314.0, 8.0, 8.0)),
                 FrameLabel::Absent,
                 FrameLabel::Present(BBox::new(207.5, 312.0, 8.0, 9.0)),
+                FrameLabel::Invalid(BBox::new(18.0, 0.0, 1.0, 0.0)),
             ]
         );
     }
@@ -379,6 +420,15 @@ mod tests {
                 FrameLabel::Unlabelled,
             ]
         );
+    }
+
+    #[test]
+    fn predictions_json_follows_the_official_interpretation() {
+        let json = r#"{"res": [[1, 2, 3, 4], [], [0], [1, 2]]}"#;
+        let preds = parse_predictions_json(json, p()).unwrap();
+        assert_eq!(preds[0], Some(BBox::new(1.0, 2.0, 3.0, 4.0)));
+        assert_eq!((preds[1], preds[2]), (None, None));
+        assert_eq!(preds[3], Some(BBox::new(0.0, 0.0, 0.0, 0.0)));
     }
 
     #[test]
