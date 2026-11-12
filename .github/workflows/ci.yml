@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "phase-*"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  check:
+    name: fmt + clippy + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # rustup is preinstalled on GitHub runners; it reads rust-toolchain.toml
+      # and installs the pinned toolchain + components on first use.
+      - name: Install pinned toolchain
+        run: rustup show active-toolchain
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Format
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --locked
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+
+      - name: Test
+        run: cargo nextest run --workspace --locked --no-tests=warn
+
+      # nextest does not run doctests. Enable this once the first library crate
+      # exists (phase 1); with only binaries `cargo test --doc` errors out.
+      # - name: Doc tests
+      #   run: cargo test --workspace --doc --locked
