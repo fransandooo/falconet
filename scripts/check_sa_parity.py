@@ -5,9 +5,15 @@
 """Check falconet's Rust state-accuracy (SA) metric against the official code.
 
 Generates deterministic synthetic tracker outputs for every sequence of a split
-(jittered boxes, misses, false alarms, "no target" answers), scores them with
-the official `eval()` and with `antiuav410 sa` in Rust, then compares the
-per-sequence scores.
+(jittered boxes, misses, false alarms, "no target" answers), or reads real ones
+with `--predictions`, scores them with the official `eval()` and with
+`antiuav410 sa` in Rust, then compares the per-sequence scores.
+
+Labels come from each sequence's `IR_label.json` in the extracted archive, the
+official evaluator's input, when it is available; otherwise they are derived
+from the toolkit's box files (`exist` = box is non-zero), which differs from
+the official labels on 37 frames: drones cut by the border have exist = 0 but
+a box.
 
 The official functions are embedded verbatim below instead of importing the
 toolkit, so no downloaded code is executed. At runtime the script checks (by
@@ -15,6 +21,7 @@ hashing text, not running it) that the toolkit's Evaluation_for_SA.py still
 contains exactly this code.
 
     uv run scripts/check_sa_parity.py [--toolkit ~/datasets/antiuav410-toolkit] [--split test]
+    uv run scripts/check_sa_parity.py --split val --predictions runs/.../final/val_sa
 """
 
 from __future__ import annotations
@@ -162,6 +169,8 @@ def main() -> int:
     data_dir = Path(os.environ.get("FALCONET_DATA_DIR", Path.home() / "datasets"))
     parser.add_argument("--toolkit", type=Path, default=data_dir / "antiuav410-toolkit")
     parser.add_argument("--split", default="test", choices=["train", "val", "test"])
+    parser.add_argument("--dataset", type=Path, default=data_dir / "antiuav410", help="extracted archive")
+    parser.add_argument("--predictions", type=Path, help="real results (<sequence>.txt, official JSON format)")
     parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
 
@@ -169,12 +178,24 @@ def main() -> int:
     official_eval = eval  # the embedded official function (shadows the builtin, as in the toolkit)
     rng = np.random.default_rng(args.seed)
     official: dict[str, float] = {}
+    from_json = 0
 
     with tempfile.TemporaryDirectory() as tmp:
         for path in sorted((args.toolkit / "annos" / args.split).glob("*.txt")):
             gt = read_boxes(path)
-            preds = synthetic_predictions(gt, rng)
-            label_res = {"exist": [int(any(v != 0 for v in b)) for b in gt], "gt_rect": gt}
+            label_file = args.dataset / args.split / path.stem / "IR_label.json"
+            if label_file.exists():
+                label_res = json.loads(label_file.read_text())
+                from_json += 1
+            else:
+                label_res = {"exist": [int(any(v != 0 for v in b)) for b in gt], "gt_rect": gt}
+            if args.predictions:
+                pred_file = args.predictions / path.name
+                if not pred_file.exists():
+                    continue
+                preds = json.loads(pred_file.read_text())["res"]
+            else:
+                preds = synthetic_predictions(gt, rng)
             official[path.stem] = float(official_eval(preds, label_res))
             (Path(tmp) / path.name).write_text(json.dumps({"res": preds}))
 
@@ -182,7 +203,7 @@ def main() -> int:
             [
                 "cargo", "run", "--release", "--quiet", "-p", "falconet-data", "--bin", "antiuav410", "--",
                 "sa", "--predictions", tmp, "--split", args.split,
-                "--toolkit", str(args.toolkit), "--per-sequence",
+                "--toolkit", str(args.toolkit), "--dataset", str(args.dataset), "--per-sequence",
             ],
             capture_output=True,
             text=True,
@@ -196,7 +217,8 @@ def main() -> int:
     diffs = np.array([abs(rust[s] - official[s]) for s in official])
     msa_official = float(np.mean(list(official.values())))
     msa_rust = float(np.mean(list(rust.values())))
-    print(f"{args.split}: {len(official)} sequences")
+    source = "real predictions" if args.predictions else "synthetic predictions"
+    print(f"{args.split}: {len(official)} sequences, {source}, labels from IR_label.json for {from_json}")
     print(f"  mSA official = {msa_official:.6f}, rust = {msa_rust:.6f}")
     print(f"  max |per-sequence difference| = {diffs.max():.2e} (tolerance {TOLERANCE:.0e})")
     ok = diffs.max() <= TOLERANCE

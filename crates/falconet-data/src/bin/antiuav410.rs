@@ -19,7 +19,8 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
 use falconet_data::antiuav410::{
-    FrameLabel, SequenceAnnotation, Split, load_toolkit_annotations, parse_predictions_json,
+    FrameLabel, SequenceAnnotation, Split, load_toolkit_annotations, parse_ir_label_json,
+    parse_predictions_json,
 };
 use falconet_data::data_dir;
 use falconet_data::metrics::state_accuracy;
@@ -53,6 +54,11 @@ enum Command {
         /// Same as for `stats`.
         #[arg(long)]
         toolkit: Option<PathBuf>,
+        /// Extracted archive [default: $FALCONET_DATA_DIR/antiuav410]. When a
+        /// sequence's `IR_label.json` is there, it is the label source, as in the
+        /// official evaluator; otherwise the toolkit's box file is used.
+        #[arg(long)]
+        dataset: Option<PathBuf>,
         /// Also print per-sequence scores as JSON lines.
         #[arg(long)]
         per_sequence: bool,
@@ -75,9 +81,11 @@ fn main() -> ExitCode {
             predictions,
             split,
             toolkit,
+            dataset,
             per_sequence,
         } => sa(
             &toolkit.unwrap_or_else(default_toolkit),
+            &dataset.unwrap_or_else(|| data_dir().join("antiuav410")),
             &predictions,
             split,
             per_sequence,
@@ -112,13 +120,14 @@ fn stats(toolkit: &Path, out: &Path) -> Result<(), Box<dyn std::error::Error>> {
 
 fn sa(
     toolkit: &Path,
+    dataset: &Path,
     predictions: &Path,
     split: Split,
     per_sequence: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let sequences = load_toolkit_annotations(toolkit)?;
     let mut scores = Vec::new();
-    let mut missing = 0;
+    let (mut missing, mut from_json) = (0, 0);
     for seq in sequences.iter().filter(|s| s.split == split) {
         let path = predictions.join(format!("{}.txt", seq.name));
         let Ok(text) = fs::read_to_string(&path) else {
@@ -126,7 +135,22 @@ fn sa(
             continue;
         };
         let preds = parse_predictions_json(&text, &path)?;
-        if let Some(score) = state_accuracy(&seq.frames, &preds) {
+        // The official evaluator reads `IR_label.json`, whose `exist` flag wins
+        // over the box: 37 frames (drones cut by the border) have exist = 0 and
+        // a box, which the toolkit's box files can't express.
+        let label_path = dataset
+            .join(split.as_str())
+            .join(&seq.name)
+            .join("IR_label.json");
+        let json_frames = match fs::read_to_string(&label_path) {
+            Ok(text) => {
+                from_json += 1;
+                Some(parse_ir_label_json(&text, &label_path)?)
+            }
+            Err(_) => None,
+        };
+        let frames = json_frames.as_deref().unwrap_or(&seq.frames);
+        if let Some(score) = state_accuracy(frames, &preds) {
             if per_sequence {
                 println!(
                     "{}",
@@ -141,7 +165,8 @@ fn sa(
     }
     let msa = scores.iter().sum::<f32>() / scores.len() as f32;
     eprintln!(
-        "{split}: mSA = {msa:.4} over {} sequences ({missing} without predictions)",
+        "{split}: mSA = {msa:.4} over {} sequences ({missing} without predictions; \
+         labels from IR_label.json for {from_json}, toolkit box files for the rest)",
         scores.len()
     );
     Ok(())

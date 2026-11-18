@@ -6,13 +6,15 @@ Layout after `scripts/download_antiuav410.sh` (verified on the full archive):
         000001.jpg ... NNNNNN.jpg   640 x 512, grey stored as RGB (channels differ <= 5/255)
         IR_label.json               {"exist": [0|1, ...], "gt_rect": [[x, y, w, h] | [], ...]}
 
-Labels follow the official toolkit's box files (`annos/<split>/<seq>.txt`),
-which are what the benchmark evaluates against: a frame has a drone when
-`gt_rect` holds a box with positive width and height. That agrees with the
-toolkit on all 438,397 frames; `exist` alone does not (37 frames have
-`exist = 0` but a box: drones cut by the image border, which the toolkit
-counts). Degenerate boxes (w or h = 0 with a non-zero position, 5 test
-frames) are dropped: their label is unknown, not "no drone".
+Two labels per frame, because `exist` and the box disagree on 37 frames
+(drones cut by the image border: `exist = 0`, yet `gt_rect` has a box):
+- `box`, for training and COCO metrics: a box with positive width and height
+  in `gt_rect`, whatever `exist` says. This matches the toolkit's box files
+  (`annos/<split>/<seq>.txt`) on all 438,397 frames;
+- `exist`, for state accuracy: the official evaluator scores frames with
+  `exist = 0` as "no drone" (an empty answer gets 1) even when they have a box.
+Degenerate boxes (w or h = 0 with a non-zero position, 5 frames) are dropped:
+their label is unknown, not "no drone".
 """
 
 from __future__ import annotations
@@ -42,6 +44,7 @@ class Frame:
     sequence: str
     index: int  # 0-based frame number inside the sequence
     box: tuple[float, float, float, float] | None  # x, y, w, h in pixels; None = no drone
+    exist: bool = True  # official `exist` flag (what state accuracy scores)
 
 
 def frame_label(rect: list[float]) -> tuple[float, float, float, float] | None | str:
@@ -58,12 +61,13 @@ def load_frames(root: Path, split: str, every: int = 1) -> list[Frame]:
     """Every `every`-th labelled frame of `split`, sequences in name order."""
     frames = []
     for seq in sorted(p for p in (root / split).iterdir() if p.is_dir()):
-        rects = json.loads((seq / "IR_label.json").read_text())["gt_rect"]
+        labels = json.loads((seq / "IR_label.json").read_text())
+        rects, exist = labels["gt_rect"], labels["exist"]
         for i in range(0, len(rects), every):
             label = frame_label(rects[i])
             if label == "invalid":
                 continue
-            frames.append(Frame(seq / f"{i + 1:06d}.jpg", seq.name, i, label))
+            frames.append(Frame(seq / f"{i + 1:06d}.jpg", seq.name, i, label, bool(exist[i])))
     return frames
 
 
