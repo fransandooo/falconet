@@ -1,0 +1,32 @@
+[project]
+name = "falconet-reference"
+version = "0.0.0"
+description = "PyTorch reference detector for falconet: trained here, exported to ONNX, then run and re-implemented in Rust"
+requires-python = "==3.12.*"
+dependencies = [
+    "torch==2.15.0",
+    "numpy==2.3.4",
+    "pillow==13.0.0",
+    "onnx==1.23.2",
+    "onnxruntime==1.31.1",
+    "onnxscript==0.7.2",  # required by torch.onnx's (dynamo) exporter
+]
+
+[dependency-groups]
+dev = ["pytest==9.2.0"]
+
+# CUDA 13.4 wheels for torch only; everything else comes from PyPI.
+[tool.uv.sources]
+torch = { index = "pytorch-cu134" }
+
+[[tool.uv.index]]
+name = "pytorch-cu134"
+url = "https://download.pytorch.org/whl/cu134"
+explicit = true
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
