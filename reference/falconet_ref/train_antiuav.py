@@ -406,7 +406,8 @@ def main() -> None:
             if step % args.log_every == 0:
                 mlflow.log_metrics(
                     {**{f"train/{k}": float(np.mean(v[-args.log_every :])) for k, v in running.items()},
-                     "train/lr": optimizer.param_groups[0]["lr"], "train/images_per_s": seen / (time.time() - t0)},
+                     "train/lr": optimizer.param_groups[0]["lr"], "train/images_per_s": seen / (time.time() - t0),
+                     "train/epoch": epoch - 1 + (b + 1) / steps_per_epoch},
                     step=step,
                 )  # fmt: skip
         train_seconds = time.time() - t0
