@@ -10,6 +10,8 @@ dependencies = [
     "onnx==1.23.2",
     "onnxruntime==1.31.1",
     "onnxscript==0.7.2",  # required by torch.onnx's (dynamo) exporter
+    "mlflow-skinny==3.18.0",
+    "pycocotools==2.0.11",
 ]
 
 [dependency-groups]

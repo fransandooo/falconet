@@ -23,7 +23,7 @@ URL="https://drive.usercontent.google.com/download?id=1zsdazmKS3mHaEZWS2BnqbYHPE
 # recorded from the first verified download (trust on first use) and pins the
 # exact archive every later download must match.
 EXPECTED_BYTES=9361681896
-EXPECTED_SHA256="${ANTIUAV410_SHA256:-}"
+EXPECTED_SHA256="${ANTIUAV410_SHA256:-339e0e56e84d620acfd2e315df39ba42a6fd5bdc958fcc0c16e2130c6b41e055}"
 
 log() { printf '[antiuav410] %s\n' "$*"; }
 
