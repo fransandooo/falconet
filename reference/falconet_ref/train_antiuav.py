@@ -148,7 +148,9 @@ def single_target_metrics(frames: list[Frame], detections: dict[int, list]) -> d
 
     `det_sa` is the Anti-UAV410 state accuracy per frame (IoU when a drone is
     visible, 1 / 0 for a correct / wrong answer on "no drone" frames),
-    averaged per sequence, then over sequences, as the official evaluator does.
+    averaged per sequence, then over sequences, as the official evaluator does
+    (including its use of the `exist` flag; see `antiuav.py`). The other
+    metrics count a drone wherever there is a box.
     """
     per_seq = defaultdict(list)
     hits = present = absent_ok = absent = 0
@@ -157,16 +159,18 @@ def single_target_metrics(frames: list[Frame], detections: dict[int, list]) -> d
     for i, f in enumerate(frames):
         dets = detections.get(i, [])
         best = dets[0] if dets and dets[0][4] >= SCORE_THRESHOLD else None
+        if not f.exist:
+            per_seq[f.sequence].append(1.0 if best is None else 0.0)
         if f.box is None:
             absent += 1
             absent_ok += best is None
-            per_seq[f.sequence].append(1.0 if best is None else 0.0)
             continue
         present += 1
         v = iou(best, f.box) if best else 0.0
         ious.append(v)
         hits += v >= 0.5
-        per_seq[f.sequence].append(v)
+        if f.exist:
+            per_seq[f.sequence].append(v)
         area = f.box[2] * f.box[3]
         size = "small" if area < COCO_SMALL else "medium" if area < COCO_MEDIUM else "large"
         by_size[size][0] += v >= 0.5

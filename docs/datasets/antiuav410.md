@@ -80,9 +80,13 @@ Sequence length: 1,000 frames typical (median), 28–1,500 overall. Absences com
 7. **Thermal crossover is everywhere** (≈ 60–67% of videos): the drone's temperature matches the background's, so intensity alone won't separate them.
 8. **5 degenerate boxes** (zero width or height) among the visible frames. They're harmless for training once filtered out, but the metric must keep them; see above.
 
-## Pending (needs the frames)
+## Frame checks (archive extracted 2026-11-18)
 
-- [ ] Frame resolution and file layout in the archive (the paper says 640 × 512; the box positions are consistent with it)
-- [ ] Consistency check: `IR_label.json` vs toolkit `.txt` for every sequence
-- [ ] Sample frames showing the size range (for the video)
+- [x] **Resolution and layout:** every frame is 640 × 512, JPEG, grey stored as 3 channels (channels differ by ≤ 5/255 from compression), at `<split>/<sequence>/NNNNNN.jpg` next to `IR_label.json`. Frame and label counts match in all 410 sequences.
+- [x] **`IR_label.json` vs toolkit box files:** they agree on 438,360 of 438,397 frames. The other **37 frames** have `exist = 0` *and* a box: drones cut by the image border (e.g. x + w = 640).
+  - The official evaluator scores them as "no drone", because it reads `exist`.
+  - The box files can't express this combination, so `antiuav410 sa` now reads `IR_label.json` when the archive is extracted, and `scripts/check_sa_parity.py` uses the same labels.
+  - For training, the box is kept: the drone is partly visible.
+- [x] **Sensor overlays:** many sequences have burnt-in on-screen text (azimuth/elevation readouts, timestamps, Chinese captions) and a crosshair, a distractor the detector has to ignore.
 - [ ] Visual check of the IoU = 0 jumps and the identical-box runs
+- [ ] Sample frames for the video (pending the decision on showing dataset frames publicly, see CP 1.1)
