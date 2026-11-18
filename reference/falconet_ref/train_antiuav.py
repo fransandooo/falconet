@@ -242,10 +242,14 @@ def render_panel(frames: list[Frame], picks: list[int], detections: dict, heatma
         d.rectangle(d.textbbox((4, 4), label), fill=(0, 0, 0))  # frames carry burnt-in sensor text
         d.text((4, 4), label, fill=(255, 255, 255))
         rows.append(row)
-    panel = Image.new("RGB", (rows[0].width, len(rows) * (tile + 4) + 20), (16, 16, 16))
+    # Two columns of frames: a landscape panel stays readable in MLflow's image slider.
+    cols = 2
+    n_rows = math.ceil(len(rows) / cols)
+    gap = 12
+    panel = Image.new("RGB", (cols * rows[0].width + (cols - 1) * gap, n_rows * (tile + 4) + 20), (16, 16, 16))
     ImageDraw.Draw(panel).text((4, 4), f"epoch {epoch}   green = ground truth, orange = model (score >= {SCORE_THRESHOLD})", fill=(255, 255, 255))
-    for r, row in enumerate(rows):
-        panel.paste(row, (0, 20 + r * (tile + 4)))
+    for k, row in enumerate(rows):
+        panel.paste(row, ((k % cols) * (row.width + gap), 20 + (k // cols) * (tile + 4)))
     return panel
 
 
