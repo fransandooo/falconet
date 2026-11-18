@@ -38,3 +38,6 @@ mise.local.toml
 # --- Misc ---
 .env
 *.log
+
+# Downloaded dataset archives
+*.zip
