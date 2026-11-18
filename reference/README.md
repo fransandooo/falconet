@@ -32,11 +32,22 @@ uv run python -m falconet_ref.export_onnx --weights ../runs/reference/synthetic/
 
 Smoke-test result (synthetic 256 × 256 scenes, 8 epochs, not a real benchmark): recall@IoU0.5 98.9%, mean IoU 0.87, frames without a drone answered correctly 100%. ONNX export: max |ONNX Runtime − PyTorch| = 9.5 × 10⁻⁶.
 
-## Still to do (needs the Anti-UAV410 frames)
+## Training on Anti-UAV410
 
-- Anti-UAV410 dataset class (frame layout inside the archive still to be verified), frame subsampling, augmentations that break the "drone in the centre" shortcut.
-- **Real training, launched by Fran** (overnight). The command will be added here, logging to MLflow.
-- Validation mAP / AP_small with `coco_eval`, and SA through the tracker.
+```bash
+mise run mlflow                           # from the repo root, in another terminal
+cd reference
+uv run python -m falconet_ref.train_antiuav --epochs 50 --samples-per-epoch 40000 --workers 6 --run-name baseline-e50
+uv run python -m falconet_ref.train_antiuav --resume ../runs/reference/antiuav410/baseline-e50/last.pt   # after a crash
+```
+
+- **Data loader** (`falconet_ref/antiuav.py`): it reads `$FALCONET_DATA_DIR/antiuav410`, as grey frames.
+  - It keeps both the box (training and COCO metrics) and the official `exist` flag (state accuracy); they differ on 37 border frames.
+  - Augmentation: flip, scale jitter, gain/bias.
+- **During training:** each epoch samples random frames, then validates on every 20th val frame (COCO metrics via pycocotools, single-drone metrics, detector-only SA). It saves `last.pt` and `best.pt` (by AP50) and renders prediction/heatmap panels for MLflow's image slider (`viz/*.png`, `*.npz` for videos).
+- **At the end:** the best model is evaluated on the full val split. The results are written in the toolkit format (`final/val_sa/`, score with `antiuav410 sa --split val`) and as COCO files (`final/coco_*.json`, score with `coco_eval`), then exported to ONNX.
+
+First run (2026-11-18, 4.6 h on the RTX 3050 Ti): full val **AP50 0.841, mAP 0.460, AP_small 0.308, detector-only mSA 0.705**. See `docs/experiments/2026-11-18-reference-antiuav410-baseline.md`.
 
 ## Disk use
 
